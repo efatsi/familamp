@@ -1,45 +1,81 @@
 SYSTEM_MODE(MANUAL);
 
-int pin = A0;
+int led = D7;
 
-int readDelay = 10;
+int pin = A0;
+int readDelay = 5;
 
 #define DATA_COUNT 10
-#define AVG_COUNT 20
-
 int data[DATA_COUNT];
 int dataIndex = 0;
 int localAverage;
 
+#define AVG_COUNT 25
 int averages[AVG_COUNT];
 int averageIndex = 0;
-int globalAverage;
+
+#define THRESHOLD 25
+#define OFF 0
+#define ON  1
+int status = OFF;
+int offValue = 4096;
+int onValue = 0;
+
+long startTime;
+bool gracePeriod;
+int  graceTime = readDelay * DATA_COUNT * AVG_COUNT * 2;
 
 void setup() {
-  for (int i = 0; i < DATA_COUNT; i++) {
-    data[i] = makeReading();
-    delay(readDelay);
-  }
+  pinMode(led, OUTPUT);
+
+  startTime = millis();
+  gracePeriod = true;
 }
 
+long lastPrint = millis();
 void loop() {
-  data[dataIndex++] = makeReading();;
+  if (gracePeriod && (millis() - startTime > graceTime)) {
+    // give the history trackers time to set up valid bounds
+    gracePeriod = false;
+  }
+
+  if (millis() > lastPrint + 1000) {
+    lastPrint = millis();
+    Serial.println("offValue:     " + String(offValue));
+    Serial.println("onValue:      " + String(onValue));
+    Serial.println("localAverage: " + String(localAverage));
+    Serial.println("---------");
+  }
+
+  digitalWrite(led, status);
+
+  data[dataIndex++] = makeReading();
   if (dataIndex == DATA_COUNT) {
     dataIndex = 0;
     calculateLocalAverage();
-  }
 
-  delay(readDelay);
+    if (status == OFF && localAverage > (offValue + THRESHOLD) && !gracePeriod) {
+      status = ON;
+      onValue = localAverage;
+    } else if (status == ON && localAverage < (onValue - THRESHOLD) && !gracePeriod) {
+      status = OFF;
+      offValue = localAverage;
+    } else {
+      recordLocalAverage();
+    }
+  }
 }
 
 int makeReading() {
+  delay(readDelay);
+
   // write HIGH
   pinMode(pin, OUTPUT);
   digitalWrite(pin, HIGH);
 
   // read on same pin
   pinMode(pin, INPUT);
-  analogRead(pin);
+  return analogRead(pin);
 }
 
 void calculateLocalAverage() {
@@ -50,10 +86,37 @@ void calculateLocalAverage() {
   localAverage = sum / DATA_COUNT;
 }
 
-// if OFF
-//   take last 5 localAverages, pick the lowest, that's the "off value"
-//   if new localAverage is >40, switch to ON
+void recordLocalAverage() {
+  averages[averageIndex++] = localAverage;
+  averageIndex = averageIndex % AVG_COUNT;
 
-// if ON
-//   take last 5 localAverages, pick the highest, that's the "on value"
-//   if new localAverage is <40, switch to OFF
+  if (status == OFF) {
+    offValue = minimumAverage();
+  }
+
+  if (status == ON) {
+    onValue = maximumAverage();
+  }
+}
+
+int minimumAverage() {
+  int toReturn = 4096;
+  for (int i = 0; i < AVG_COUNT; i++) {
+    if (averages[i] != 0 && averages[i] < toReturn) {
+      toReturn = averages[i];
+    }
+  }
+
+  return toReturn;
+}
+
+int maximumAverage() {
+  int toReturn = 0;
+  for (int i = 0; i < AVG_COUNT; i++) {
+    if (averages[i] > toReturn) {
+      toReturn = averages[i];
+    }
+  }
+
+  return toReturn;
+}
