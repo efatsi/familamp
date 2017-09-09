@@ -10,11 +10,11 @@ int data[DATA_COUNT];
 int dataIndex = 0;
 int localAverage;
 
-#define AVG_COUNT 25
+#define AVG_COUNT 20 // one second of data (1000 / (readDelay * DATA_COUNT))
 int averages[AVG_COUNT];
 int averageIndex = 0;
 
-#define THRESHOLD 25
+#define THRESHOLD 70
 #define OFF 0
 #define ON  1
 int status = OFF;
