@@ -1,14 +1,5 @@
 SYSTEM_MODE(MANUAL);
 
-#include "neopixel.h"
-
-// IMPORTANT: Set pixel COUNT, PIN and TYPE
-#define PIXEL_PIN D2
-#define PIXEL_COUNT 88
-#define PIXEL_TYPE WS2812B
-
-Adafruit_NeoPixel strip(PIXEL_COUNT, PIXEL_PIN, PIXEL_TYPE);
-
 int led = D7;
 
 int pin = A0;
@@ -39,60 +30,24 @@ void setup() {
 
   startTime = millis();
   gracePeriod = true;
-
-  strip.begin();
-  strip.show();
-}
-
-void loop() {
-  determineState();
-  display();
-}
-
-#define COLOR_LOOP_TIME 3000
-int colorTracker = 85;
-int lastColor = 0;
-long onStart;
-void determineState() {
-  checkSensor();
-
-  if (status == ON) {
-    int timePassed = (millis() - onStart) % COLOR_LOOP_TIME;
-    int colorAdjustment = map(timePassed, 0, COLOR_LOOP_TIME, 0, 255);
-    colorTracker = (lastColor + colorAdjustment) % 255;
-  } else if (status == OFF) {
-    lastColor = colorTracker;
-  }
 }
 
 long lastPrint = millis();
-void display() {
-  digitalWrite(led, status);
-
-  uint32_t color = Wheel(colorTracker);
+void loop() {
+  if (gracePeriod && (millis() - startTime > graceTime)) {
+    // give the history trackers time to set up valid bounds
+    gracePeriod = false;
+  }
 
   if (millis() > lastPrint + 1000) {
     lastPrint = millis();
     Serial.println("offValue:     " + String(offValue));
     Serial.println("onValue:      " + String(onValue));
     Serial.println("localAverage: " + String(localAverage));
-    Serial.println("colorTracker: " + String(color));
-    Serial.println("color:        " + String(colorTracker));
     Serial.println("---------");
   }
 
-
-  for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, color);
-  }
-  strip.show();
-}
-
-void checkSensor() {
-  if (gracePeriod && (millis() - startTime > graceTime)) {
-    // give the history trackers time to set up valid bounds
-    gracePeriod = false;
-  }
+  digitalWrite(led, status);
 
   data[dataIndex++] = makeReading();
   if (dataIndex == DATA_COUNT) {
@@ -101,7 +56,6 @@ void checkSensor() {
 
     if (status == OFF && localAverage > (offValue + THRESHOLD) && !gracePeriod) {
       status = ON;
-      onStart = millis();
     } else if (status == ON && localAverage < (onValue - THRESHOLD) && !gracePeriod) {
       status = OFF;
     }
@@ -163,18 +117,4 @@ int maximumAverage() {
   }
 
   return toReturn;
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  if(WheelPos < 85) {
-   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  } else if(WheelPos < 170) {
-   WheelPos -= 85;
-   return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  } else {
-   WheelPos -= 170;
-   return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
 }
