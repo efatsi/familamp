@@ -56,13 +56,11 @@ void loop() {
 
     if (status == OFF && localAverage > (offValue + THRESHOLD) && !gracePeriod) {
       status = ON;
-      onValue = localAverage;
     } else if (status == ON && localAverage < (onValue - THRESHOLD) && !gracePeriod) {
       status = OFF;
-      offValue = localAverage;
-    } else {
-      recordLocalAverage();
     }
+
+    recordLocalAverage();
   }
 }
 

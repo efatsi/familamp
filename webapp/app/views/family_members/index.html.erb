@@ -1,0 +1,5 @@
+<ul>
+  <% FamilyMember.order(:blink_id).each do |family_member| %>
+    <li><%= link_to family_member, family_member_path(family_member) %></li>
+  <% end %>
+</ul>
