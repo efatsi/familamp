@@ -3,7 +3,7 @@ SYSTEM_MODE(MANUAL);
 #include "neopixel.h"
 
 // IMPORTANT: Set pixel COUNT, PIN and TYPE
-#define PIXEL_PIN D2
+#define PIXEL_PIN D0
 #define PIXEL_COUNT 88
 #define PIXEL_TYPE WS2812B
 
@@ -23,7 +23,7 @@ int localAverage;
 int averages[AVG_COUNT];
 int averageIndex = 0;
 
-#define THRESHOLD 70
+#define THRESHOLD 30
 #define OFF 0
 #define ON  1
 int status = OFF;
@@ -49,7 +49,7 @@ void loop() {
   display();
 }
 
-#define COLOR_LOOP_TIME 3000
+#define COLOR_LOOP_TIME 6000
 int colorTracker = 85;
 int lastColor = 0;
 long onStart;
