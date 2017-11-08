@@ -50,7 +50,7 @@ void loop() {
 }
 
 #define COLOR_LOOP_TIME 6000
-int colorTracker = 85;
+int colorTracker = 170;
 int lastColor = 0;
 long onStart;
 void determineState() {
@@ -71,16 +71,15 @@ void display() {
 
   uint32_t color = Wheel(colorTracker);
 
-  if (millis() > lastPrint + 1000) {
-    lastPrint = millis();
-    Serial.println("offValue:     " + String(offValue));
-    Serial.println("onValue:      " + String(onValue));
-    Serial.println("localAverage: " + String(localAverage));
-    Serial.println("colorTracker: " + String(color));
-    Serial.println("color:        " + String(colorTracker));
-    Serial.println("---------");
-  }
-
+  // if (millis() > lastPrint + 700) {
+  //   lastPrint = millis();
+  //   Serial.println("offValue:     " + String(offValue));
+  //   Serial.println("onValue:      " + String(onValue));
+  //   Serial.println("diff:         " + String(onValue - offValue));
+  //   Serial.println("localAverage: " + String(localAverage));
+  //   Serial.println("---------");
+  // }
+  Serial.println(onValue - offValue);
 
   for (int i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, color);
