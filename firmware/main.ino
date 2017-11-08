@@ -24,12 +24,12 @@ int data[DATA_COUNT];
 int dataIndex = 0;
 int localAverage;
 
-// average sets in 1.5 seconds
-#define AVG_COUNT 30
+// average sets in 1 seconds
+#define AVG_COUNT 20
 int averages[AVG_COUNT];
 int averageIndex = 0;
 
-int maxHistory = readDelay * DATA_COUNT * AVG_COUNT * 2;
+int maxHistory = readDelay * DATA_COUNT * AVG_COUNT;
 
 #define THRESHOLD 40
 #define OFF 0
@@ -44,7 +44,7 @@ long offStart;
 
 long startTime;
 bool gracePeriod;
-int  graceTime = maxHistory;
+int  graceTime = maxHistory * 2;
 
 void setup() {
   pinMode(led, OUTPUT);
@@ -137,10 +137,12 @@ void checkSensor() {
     if (!gracePeriod) {
       if (status == OFF && localAverage > (offValue + THRESHOLD)) {
         status = ON;
+        onValue = localAverage;
         onStart = millis();
       } else if (status == ON && localAverage < (onValue - THRESHOLD)) {
         status = OFF;
         offStart = millis();
+        offValue = localAverage;
         Particle.publish("color", String(colorTracker));
       }
     }
@@ -174,9 +176,7 @@ void recordLocalAverage() {
   averageIndex = averageIndex % AVG_COUNT;
 
   if (status == OFF) {
-    if (offStart + maxHistory > millis()) {
-      offValue = minimumAverage();
-    } else {
+    if (offStart + (maxHistory * 1.5) < millis()) {
       offValue = previousAverage();
     }
   }
