@@ -1,8 +1,8 @@
 SYSTEM_MODE(SEMI_AUTOMATIC);
+STARTUP(WiFi.selectAntenna(ANT_EXTERNAL));
 
 #include "neopixel.h"
 
-// IMPORTANT: Set pixel COUNT, PIN and TYPE
 #define PIXEL_PIN D0
 #define PIXEL_COUNT 88
 #define PIXEL_TYPE WS2812B
@@ -31,7 +31,6 @@ int averageIndex = 0;
 
 int maxHistory = readDelay * DATA_COUNT * AVG_COUNT;
 
-#define THRESHOLD 40
 #define OFF 0
 #define ON  1
 int status = OFF;
@@ -45,6 +44,10 @@ long offStart;
 long startTime;
 bool gracePeriod;
 int  graceTime = maxHistory * 2;
+int  threshold;
+
+bool startupPing = false;
+long selfPingTimer;
 
 void setup() {
   pinMode(led, OUTPUT);
@@ -58,13 +61,20 @@ void setup() {
   Particle.connect();
 
   Particle.variable("diff", diff);
-  Particle.subscribe("color", receiveColor);
+  Particle.function("setWifi", setWifi);
+
+  Particle.subscribe("fl_ping", receivePing);
+  Particle.subscribe("fl_color", receiveColor);
+
+  EEPROM.get(0, threshold);
 
   startTime = millis();
   gracePeriod = true;
 }
 
 void loop() {
+  // TODO: if on for over 30 seconds, bail out
+
   determineState();
   display();
 }
@@ -86,33 +96,26 @@ long lastPrint = millis();
 void display() {
   if (gracePeriod) {
     return;
+  } else if (!startupPing) {
+    Particle.publish("fl_ping");
+    selfPingTimer = millis();
+    startupPing = true;
+
+    return;
   }
 
   digitalWrite(led, status);
 
   uint32_t color = wheel(colorTracker);
 
-  if (millis() > lastPrint + 25) {
-    Serial.print(localAverage);
-    Serial.print(",");
-    Serial.print(offValue);
-    Serial.print(",");
-    Serial.print(status == ON ? 1400 : 1380);
-    Serial.print(",");
-    Serial.println(onValue);
-  }
-  // if (millis() > lastPrint + 250) {
-  //   lastPrint = millis();
-  //   if (status == ON) {
-  //     Serial.println("offValue:     " + String(offValue));
-  //     Serial.println("onvalue:      " + String(onValue) + " *");
-  //   } else {
-  //     Serial.println("offValue:     " + String(offValue) + " *");
-  //     Serial.println("onValue:      " + String(onValue));
-  //   }
-  //   Serial.println("diff:         " + String(onValue - offValue));
-  //   Serial.println("localAverage: " + String(localAverage));
-  //   Serial.println("---------");
+  // if (millis() > lastPrint + 25) {
+  //   Serial.print(localAverage);
+  //   Serial.print(",");
+  //   Serial.print(offValue);
+  //   Serial.print(",");
+  //   Serial.print(status == ON ? 1400 : 1380);
+  //   Serial.print(",");
+  //   Serial.println(onValue);
   // }
 
   for (int i = 0; i < strip.numPixels(); i++) {
@@ -135,15 +138,18 @@ void checkSensor() {
     calculateLocalAverage();
 
     if (!gracePeriod) {
-      if (status == OFF && localAverage > (offValue + THRESHOLD)) {
+      if (status == OFF && localAverage > (offValue + threshold)) {
         status = ON;
         onValue = localAverage;
         onStart = millis();
-      } else if (status == ON && localAverage < (onValue - THRESHOLD)) {
+        Serial.println("Starting " + String(onStart));
+      } else if (status == ON && localAverage < (onValue - threshold)) {
         status = OFF;
         offStart = millis();
         offValue = localAverage;
-        Particle.publish("color", String(colorTracker));
+        Serial.println("Ending   " + String(offStart));
+        Serial.println("Duration " + String((offStart - onStart) / 1000.0));
+        Particle.publish("fl_color", String(colorTracker));
       }
     }
 
@@ -222,6 +228,10 @@ int previousAverage() {
 void receiveColor(const char *event, const char *data) {
   int newColor = atoi(data);
 
+  if (colorTracker == newColor) {
+    return;
+  }
+
   if (newColor != 0) {
     for (int i = 0; i < 100; i++) {
       int mapper = map(i, 0, 100, colorTracker, newColor);
@@ -231,10 +241,16 @@ void receiveColor(const char *event, const char *data) {
         strip.setPixelColor(i, color);
       }
       strip.show();
-      delay(3);
+      delay(8);
     }
 
     colorTracker = newColor;
+  }
+}
+
+void receivePing(const char *event, const char *data) {
+  if (selfPingTimer + 5000 < millis()) {
+    Particle.publish("fl_color", String(colorTracker));
   }
 }
 
@@ -249,5 +265,19 @@ uint32_t wheel(int position) {
   } else {
    position -= 170;
    return strip.Color(0, position * 3, 255 - position * 3);
+  }
+}
+
+int setWifi(String command) {
+  int seperatorIndex = command.indexOf(":");
+
+  if (seperatorIndex > 0) {
+    String ssid     = command.substring(0, seperatorIndex);
+    String password = command.substring(seperatorIndex + 1);
+
+    WiFi.setCredentials(ssid, password);
+    return 1;
+  } else {
+    return 0;
   }
 }
