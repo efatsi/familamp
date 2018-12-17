@@ -2,21 +2,22 @@ SYSTEM_MODE(MANUAL);
 
 #include "dotstar.h"
 
-#define NUMPIXELS 30
-#define DATAPIN   A4
-#define CLOCKPIN  A5
+#define NUMPIXELS 18
+#define DATAPIN   A5
+#define CLOCKPIN  A4
 Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
 
 void setup() {
   strip.begin(); // Initialize pins for output
   strip.show();  // Turn all LEDs off ASAP
+
+  strip.setBrightness(10); // Don't blind yourself
 }
 
 int      head  = 0, tail = -10; // Index of first 'on' and 'off' pixels
 uint32_t color = 0xFF0000;      // 'On' color (starts red)
 
 void loop() {
-
   strip.setPixelColor(head, color); // 'On' pixel at head
   strip.setPixelColor(tail, 0);     // 'Off' pixel at tail
   strip.show();                     // Refresh strip
