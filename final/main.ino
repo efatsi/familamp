@@ -11,31 +11,32 @@ Adafruit_DotStar strip = Adafruit_DotStar(PIXEL_COUNT, DATAPIN, CLOCKPIN);
 int colorTracker = 170;
 int lastColor = 0;
 
+#define OFF 0
+#define ON  1
+int status = OFF;
 int sensorPin = D7;
-int status = 0;
+long pressStart;
 
 bool startupPing = false;
 long selfPingTimer;
 
 void setup() {
   strip.begin();
+  strip.setBrightness(180);
   for (int i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, 10, 10, 10);
   }
   strip.show();
 
-  Particle.connect();
+  pinMode(sensorPin, INPUT);
 
-  Particle.variable("diff", diff);
-  Particle.function("setWifi", setWifi);
-
-  Particle.subscribe("fl_ping", receivePing);
-  Particle.subscribe("fl_color", receiveColor);
-
-  EEPROM.get(0, threshold);
-
-  startTime = millis();
-  gracePeriod = true;
+  delay(1000);
+  // Particle.connect();
+  //
+  // Particle.function("setWifi", setWifi);
+  //
+  // Particle.subscribe("fl2_ping", receivePing);
+  // Particle.subscribe("fl2_color", receiveColor);
 }
 
 void loop() {
@@ -49,7 +50,7 @@ void determineState() {
   checkSensor();
 
   if (status == ON) {
-    int timePassed = (millis() - onStart) % COLOR_LOOP_TIME;
+    int timePassed = (millis() - pressStart) % COLOR_LOOP_TIME;
     int colorAdjustment = map(timePassed, 0, COLOR_LOOP_TIME, 0, 255);
     colorTracker = ((lastColor + colorAdjustment) % 254) + 1;
   } else if (status == OFF) {
@@ -58,12 +59,28 @@ void determineState() {
 }
 
 void checkSensor() {
-  status = digitalRead(sensorPin)
+  int newStatus = digitalRead(sensorPin) ? ON : OFF;
+
+  if (status == newStatus) {
+    return;
+  }
+
+  if (newStatus == ON) {
+    status = ON;
+    pressStart = millis();
+    Serial.println("Starting " + String(pressStart));
+  } else if (newStatus == OFF) {
+    status = OFF;
+
+    Serial.println("Ending   " + String(millis()));
+    Serial.println("Duration " + String((millis() - pressStart) / 1000.0));
+    // Particle.publish("fl2_color", String(colorTracker));
+  }
 }
 
 void display() {
   if (!startupPing) {
-    Particle.publish("fl_ping");
+    // Particle.publish("fl2_ping");
     selfPingTimer = millis();
     startupPing = true;
 
@@ -103,7 +120,7 @@ void receiveColor(const char *event, const char *data) {
 
 void receivePing(const char *event, const char *data) {
   if (selfPingTimer + 5000 < millis()) {
-    Particle.publish("fl_color", String(colorTracker));
+    // Particle.publish("fl2_color", String(colorTracker));
   }
 }
 
