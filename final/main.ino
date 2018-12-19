@@ -3,8 +3,8 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 #include "dotstar.h"
 
 #define PIXEL_COUNT 18
-#define DATAPIN   A5
-#define CLOCKPIN  A4
+#define DATAPIN   A4
+#define CLOCKPIN  A5
 Adafruit_DotStar strip = Adafruit_DotStar(PIXEL_COUNT, DATAPIN, CLOCKPIN);
 
 #define COLOR_LOOP_TIME 6000
@@ -21,22 +21,22 @@ bool startupPing = false;
 long selfPingTimer;
 
 void setup() {
+  pinMode(sensorPin, INPUT);
+
   strip.begin();
   strip.setBrightness(180);
   for (int i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, 10, 10, 10);
   }
   strip.show();
+  delay(50);
 
-  pinMode(sensorPin, INPUT);
+  Particle.connect();
 
-  delay(1000);
-  // Particle.connect();
-  //
-  // Particle.function("setWifi", setWifi);
-  //
-  // Particle.subscribe("fl2_ping", receivePing);
-  // Particle.subscribe("fl2_color", receiveColor);
+  Particle.function("setWifi", setWifi);
+
+  Particle.subscribe("fl2_ping", receivePing);
+  Particle.subscribe("fl2_color", receiveColor);
 }
 
 void loop() {
@@ -74,13 +74,13 @@ void checkSensor() {
 
     Serial.println("Ending   " + String(millis()));
     Serial.println("Duration " + String((millis() - pressStart) / 1000.0));
-    // Particle.publish("fl2_color", String(colorTracker));
+    Particle.publish("fl2_color", String(colorTracker));
   }
 }
 
 void display() {
   if (!startupPing) {
-    // Particle.publish("fl2_ping");
+    Particle.publish("fl2_ping");
     selfPingTimer = millis();
     startupPing = true;
 
@@ -120,7 +120,7 @@ void receiveColor(const char *event, const char *data) {
 
 void receivePing(const char *event, const char *data) {
   if (selfPingTimer + 5000 < millis()) {
-    // Particle.publish("fl2_color", String(colorTracker));
+    Particle.publish("fl2_color", String(colorTracker));
   }
 }
 
