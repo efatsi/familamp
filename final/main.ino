@@ -3,8 +3,8 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 #include "dotstar.h"
 
 #define PIXEL_COUNT 18
-#define DATAPIN   A4
-#define CLOCKPIN  A5
+#define DATAPIN   D2
+#define CLOCKPIN  D4
 Adafruit_DotStar strip = Adafruit_DotStar(PIXEL_COUNT, DATAPIN, CLOCKPIN);
 
 #define COLOR_LOOP_TIME 6000
