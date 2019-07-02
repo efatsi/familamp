@@ -35,8 +35,8 @@ void setup() {
 
   Particle.function("setWifi", setWifi);
 
-  Particle.subscribe("fl2_ping", receivePing);
-  Particle.subscribe("fl2_color", receiveColor);
+  Particle.subscribe("fl3_ping", receivePing);
+  Particle.subscribe("fl3_color", receiveColor);
 }
 
 void loop() {
@@ -74,13 +74,13 @@ void checkSensor() {
 
     Serial.println("Ending   " + String(millis()));
     Serial.println("Duration " + String((millis() - pressStart) / 1000.0));
-    Particle.publish("fl2_color", String(colorTracker));
+    Particle.publish("fl3_color", String(colorTracker));
   }
 }
 
 void display() {
   if (!startupPing) {
-    Particle.publish("fl2_ping");
+    Particle.publish("fl3_ping");
     selfPingTimer = millis();
     startupPing = true;
 
@@ -120,7 +120,7 @@ void receiveColor(const char *event, const char *data) {
 
 void receivePing(const char *event, const char *data) {
   if (selfPingTimer + 5000 < millis()) {
-    Particle.publish("fl2_color", String(colorTracker));
+    Particle.publish("fl3_color", String(colorTracker));
   }
 }
 
